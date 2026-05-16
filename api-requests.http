@@ -1,0 +1,139 @@
+### AI Task Manager API — VS Code REST Client
+### Install the "REST Client" extension (humao.rest-client) to run these.
+### Click "Send Request" above any request block.
+
+@baseUrl = http://localhost:5099
+@contentType = application/json
+
+# ─── Step 1: Register ─────────────────────────────────────────────────────────
+
+### Register a new account
+# @name register
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane@example.com",
+  "password": "Secure@Pass1"
+}
+
+###
+
+# Grab the token from the register response
+@token = {{register.response.body.data.accessToken}}
+
+
+# ─── Step 2: Login ────────────────────────────────────────────────────────────
+
+### Login with demo account (seeded on startup)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "demo@aitaskmanager.dev",
+  "password": "Demo@123!"
+}
+
+###
+
+@demoToken = {{login.response.body.data.accessToken}}
+
+
+# ─── Step 3: Tasks ────────────────────────────────────────────────────────────
+
+### Create a task
+# @name createTask
+POST {{baseUrl}}/api/tasks
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "title": "Set up CI/CD pipeline",
+  "description": "Configure GitHub Actions for automated testing and deployment.",
+  "priority": "High",
+  "category": "DevOps",
+  "dueDate": "2025-12-31T00:00:00Z"
+}
+
+###
+
+@taskId = {{createTask.response.body.data.id}}
+
+### Get all tasks (paginated)
+GET {{baseUrl}}/api/tasks?page=1&pageSize=10&sortBy=createdAt&sortDirection=desc
+Authorization: Bearer {{token}}
+
+###
+
+### Get all tasks — filter by status
+GET {{baseUrl}}/api/tasks?status=InProgress&priority=High
+Authorization: Bearer {{token}}
+
+###
+
+### Get all tasks — search
+GET {{baseUrl}}/api/tasks?search=pipeline
+Authorization: Bearer {{token}}
+
+###
+
+### Get a single task
+GET {{baseUrl}}/api/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+###
+
+### Update a task (partial — only send fields you want to change)
+PUT {{baseUrl}}/api/tasks/{{taskId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "status": "InProgress",
+  "title": "Set up CI/CD pipeline (updated)"
+}
+
+###
+
+### AI summarize — generates summary, priority suggestion, and productivity tips
+POST {{baseUrl}}/api/tasks/{{taskId}}/summarize
+Authorization: Bearer {{token}}
+
+###
+
+### Delete a task
+DELETE {{baseUrl}}/api/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+
+# ─── Edge Cases ───────────────────────────────────────────────────────────────
+
+### Try to register with a duplicate email (expect 409)
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane@example.com",
+  "password": "Secure@Pass1"
+}
+
+###
+
+### Try to access tasks without a token (expect 401)
+GET {{baseUrl}}/api/tasks
+
+###
+
+### Try to get a non-existent task (expect 404)
+GET {{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+###
+
+### Health check
+GET {{baseUrl}}/health

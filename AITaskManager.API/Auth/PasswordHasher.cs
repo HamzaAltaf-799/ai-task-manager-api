@@ -1,0 +1,47 @@
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+
+namespace AITaskManager.API.Auth;
+
+/// <summary>
+/// PBKDF2-based password hasher using the built-in ASP.NET Core KeyDerivation.
+/// Same algorithm used by ASP.NET Identity under the hood.
+/// </summary>
+public static class PasswordHasher
+{
+    private const int SaltSize = 16;
+    private const int HashSize = 32;
+    private const int Iterations = 100_000;
+
+    public static string Hash(string password)
+    {
+        var salt = RandomNumberGenerator.GetBytes(SaltSize);
+
+        var hash = KeyDerivation.Pbkdf2(
+            password: password,
+            salt: salt,
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: Iterations,
+            numBytesRequested: HashSize);
+
+        return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
+    }
+
+    public static bool Verify(string password, string storedHash)
+    {
+        var parts = storedHash.Split(':');
+        if (parts.Length != 2) return false;
+
+        var salt = Convert.FromBase64String(parts[0]);
+        var expectedHash = Convert.FromBase64String(parts[1]);
+
+        var actualHash = KeyDerivation.Pbkdf2(
+            password: password,
+            salt: salt,
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: Iterations,
+            numBytesRequested: HashSize);
+
+        return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
+    }
+}

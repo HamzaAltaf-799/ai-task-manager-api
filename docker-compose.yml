@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: final
+    container_name: aitaskmanager-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - JwtSettings__Secret=${JWT_SECRET:?JWT_SECRET must be set}
+      - JwtSettings__Issuer=AITaskManager.API
+      - JwtSettings__Audience=AITaskManager.Clients
+      - JwtSettings__ExpiryMinutes=60
+      - OpenAI__ApiKey=${OPENAI_API_KEY:-}
+      - OpenAI__Model=gpt-4o-mini
+    networks:
+      - aitaskmanager
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Optional: swap in-memory repos for real PostgreSQL ──────────────────────
+  # Uncomment this block and implement EF Core repos (ITaskRepository, IUserRepository)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: aitaskmanager-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: aitaskmanager
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - aitaskmanager
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ── Optional: Redis cache ────────────────────────────────────────────────────
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: aitaskmanager-redis
+  #   restart: unless-stopped
+  #   command: redis-server --save 60 1 --loglevel warning
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - aitaskmanager
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+
+networks:
+  aitaskmanager:
+    driver: bridge
+
+# volumes:
+#   postgres-data:
+#   redis-data:
